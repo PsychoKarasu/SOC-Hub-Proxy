@@ -2,6 +2,27 @@ const express = require('express');
 const fetch = require('node-fetch');
 const app = express();
 
+// Allowlist degli host che i due hub effettivamente chiamano.
+// Aggiungere qui nuovi connettori; tutto il resto viene rifiutato.
+const ALLOWED_HOSTS = new Set([
+  // Intel-Hub
+  'free.intelx.io',
+  '2.intelx.io',
+  'api.pwnedpasswords.com',
+  'breachdirectory.p.rapidapi.com',
+  'leakix.net',
+  'api.leakix.net',
+  'api.dehashed.com',
+  // Phish-Hub
+  'api.hunter.io',
+  'emailrep.io',
+  'dns.google',
+  'urlscan.io',
+  'www.virustotal.com',
+  // AI connector
+  'api.anthropic.com'
+]);
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -21,6 +42,14 @@ app.all('*', async (req, res) => {
   let targetUrl;
   try { targetUrl = new URL(decodeURIComponent(target)); }
   catch { return res.set(CORS).status(400).send('Invalid URL'); }
+
+  if (!ALLOWED_HOSTS.has(targetUrl.hostname)) {
+    return res
+      .set(CORS)
+      .set('x-deny-reason', 'host_not_allowed')
+      .status(403)
+      .send('Host not in allowlist');
+  }
 
   const headers = { ...req.headers };
   ['host','connection','content-length','origin','referer','x-forwarded-for','x-forwarded-proto','x-forwarded-host','x-render-origin-server']
@@ -46,5 +75,7 @@ app.all('*', async (req, res) => {
   }
 });
 
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log('IIHub proxy on ' + PORT));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('IIHub proxy on ' + PORT));
